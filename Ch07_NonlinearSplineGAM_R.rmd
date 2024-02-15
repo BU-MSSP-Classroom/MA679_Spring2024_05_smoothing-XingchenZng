@@ -129,8 +129,18 @@ data(College,package = "ISLR2")
 
 Your code:
 ```{r,echo=TRUE}
-#
-#
+library(ISLR2)
+data(College)
+set.seed(123)
+
+train_indices <- sample(1:nrow(College), 0.8 * nrow(College))
+train_data <- College[train_indices, ]
+test_data <- College[-train_indices, ]
+
+model <- lm(Outstate ~ Private + Apps + Accept + Enroll, data = train_data)
+
+summary(model)
+
 ```
 
 Your answer:
@@ -148,8 +158,14 @@ Please write your answer in full sentences.
 
 Your code:
 ```{r,echo=TRUE}
-#
-#
+library(mgcv)
+
+gam_model <- gam(Outstate ~ s(Private, bs = "re") + s(Apps) + s(Accept) + s(Enroll), data = train_data)
+
+plot(gam_model, select = 1)
+
+summary(gam_model)
+
 ```
 
 Your answer:
@@ -166,8 +182,15 @@ Please write your answer in full sentences.
 
 Your code:
 ```{r,echo=TRUE}
-#
-#
+test_predictions <- predict(gam_model, newdata = test_data)
+
+rmse <- sqrt(mean((test_data$Outstate - test_predictions)^2))
+
+rsquared <- cor(test_data$Outstate, test_predictions)^2
+
+cat("RMSE:", rmse, "\n")
+cat("R-squared:", rsquared, "\n")
+
 ```
 
 Your answer:
@@ -184,8 +207,7 @@ Please write your answer in full sentences.
 
 Your code:
 ```{r,echo=TRUE}
-#
-#
+summary(gam_model)
 ```
 
 Your answer:
@@ -204,8 +226,36 @@ Fit some of the non-linear models investigated in chapter 7 to the `Auto` data s
 
 Your code:
 ```{r,echo=TRUE}
-#
-#
+library(ISLR2)
+library(ggplot2)
+library(mgcv)
+library(cowplot)
+
+data(Auto)
+
+lm_model <- lm(mpg ~ horsepower, data = Auto)
+
+poly_model <- lm(mpg ~ poly(horsepower, 2), data = Auto)
+
+spline_model <- gam(mpg ~ s(horsepower), data = Auto)
+
+p1 <- ggplot(Auto, aes(x = horsepower, y = mpg)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(title = "Linear Relationship (lm)")
+
+p2 <- ggplot(Auto, aes(x = horsepower, y = mpg)) +
+  geom_point() +
+  geom_smooth(method = "lm", formula = y ~ poly(x, 2), se = FALSE, color = "red") +
+  labs(title = "Quadratic Relationship (poly)")
+
+p3 <- ggplot(Auto, aes(x = horsepower, y = mpg)) +
+  geom_point() +
+  geom_smooth(method = "gam", se = FALSE, color = "green") +
+  labs(title = "Non-linear Relationship (gam)")
+
+plot_grid(p1, p2, p3, ncol = 3)
+
 ```
 
 Your answer:
@@ -227,8 +277,22 @@ $Y-\hat{\beta}_1X_1=\beta_0+\beta_2X_2+\epsilon$
 You can do this as follows:
 
 ```{r,eval=FALSE}
-> a <- y - beta1 * x1
-> beta2 <- lm(a ~ x2)$coef [2]
+set.seed(123)
+
+n <- 100
+X1 <- rnorm(n)
+X2 <- rnorm(n)
+Y <- 2 + 3 * X1 + 4 * X2 + rnorm(n)
+
+beta1 <- 2
+
+beta0 <- 0
+
+a <- Y - beta1 * X1
+beta2 <- lm(a ~ X2)$coef[2]
+
+print(beta2)
+
 ```
 
 (d) Keeping $\hat{\beta}_2$  fixed, fit the model
@@ -246,8 +310,27 @@ You can do this as follows:
 
 Your code:
 ```{r,echo=TRUE}
-#
-#
+# Initialize vectors to store estimates
+beta0_estimates <- numeric(1000)
+beta1_estimates <- numeric(1000)
+beta2_estimates <- numeric(1000)
+
+for (i in 1:1000) {
+  a <- Y - beta1 * X1
+  beta2 <- lm(a ~ X2)$coef[2]
+  
+  beta0 <- mean(Y - beta1 * X1 - beta2 * X2)
+  
+  beta0_estimates[i] <- beta0
+  beta1_estimates[i] <- beta1
+  beta2_estimates[i] <- beta2
+}
+
+plot(1:1000, beta0_estimates, type = "l", col = "red", xlab = "Iteration", ylab = "Estimate", main = "Estimates of beta0, beta1, and beta2")
+lines(1:1000, beta1_estimates, col = "blue")
+lines(1:1000, beta2_estimates, col = "green")
+legend("topright", legend = c("beta0", "beta1", "beta2"), col = c("red", "blue", "green"), lty = 1)
+
 ```
 
 
@@ -257,8 +340,20 @@ Your code:
 
 Your code:
 ```{r,echo=TRUE}
-#
-#
+lm_model <- lm(Y ~ X1 + X2)
+
+plot(1:1000, beta0_estimates, type = "l", col = "red", xlab = "Iteration", ylab = "Estimate", main = "Comparison of Estimates", ylim = range(c(beta0_estimates, coef(lm_model))))
+lines(1:1000, beta1_estimates, col = "blue")
+lines(1:1000, beta2_estimates, col = "green")
+
+abline(h = coef(lm_model)["(Intercept)"], col = "red", lty = 2)
+abline(h = coef(lm_model)["X1"], col = "blue", lty = 2)
+abline(h = coef(lm_model)["X2"], col = "green", lty = 2)
+
+legend("topright", legend = c("beta0", "beta1", "beta2", "lm_beta0", "lm_beta1", "lm_beta2"), 
+       col = c("red", "blue", "green", "red", "blue", "green"), 
+       lty = c(1, 1, 1, 2, 2, 2))
+
 ```
 
 Your answer:
@@ -275,8 +370,14 @@ Please write your answer in full sentences.
 
 Your code:
 ```{r,echo=TRUE}
-#
-#
+mse_beta0 <- mean((beta0_estimates - coef(lm_model)["(Intercept)"])^2)
+mse_beta1 <- mean((beta1_estimates - coef(lm_model)["X1"])^2)
+mse_beta2 <- mean((beta2_estimates - coef(lm_model)["X2"])^2)
+
+cat("MSE for beta0:", mse_beta0, "\n")
+cat("MSE for beta1:", mse_beta1, "\n")
+cat("MSE for beta2:", mse_beta2, "\n")
+
 ```
 
 Your answer:
@@ -293,8 +394,40 @@ Please write your answer in full sentences.
 
 Your code:
 ```{r,echo=TRUE}
-#
-#
+set.seed(123)
+
+n <- 100  
+p <- 100
+
+X <- matrix(rnorm(n * p), nrow = n)
+
+beta_true <- rnorm(p) 
+Y <- X %*% beta_true + rnorm(n) 
+
+beta_hat <- rep(0, p)
+
+calculate_mse <- function(beta_hat, beta_true) {
+  return(mean((beta_hat - beta_true)^2))
+}
+
+mse_values <- numeric(1000) 
+
+for (iter in 1:1000) {
+  for (j in 1:p) {
+    a <- Y - X[, -j] %*% beta_hat[-j]
+    
+    beta_hat[j] <- lm(a ~ X[, j])$coef[2]
+  }
+  
+  mse_values[iter] <- calculate_mse(beta_hat, beta_true)
+  
+  if (iter > 1 && mse_values[iter] < 1e-6 * mse_values[iter - 1]) {
+    break  
+  }
+}
+
+plot(1:iter, mse_values[1:iter], type = "l", xlab = "Iteration", ylab = "Mean Squared Error", main = "MSE vs. Iteration")
+
 ```
 
 Your answer:
